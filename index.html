@@ -1,0 +1,687 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WILD WORLD 3D</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #000;
+}
+
+canvas {
+    display: block;
+}
+
+#menu {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: linear-gradient(#102c40aa, #000b);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-align: center;
+}
+
+#menu h1 {
+    font-size: clamp(40px, 8vw, 90px);
+    letter-spacing: 8px;
+    text-shadow: 0 0 25px #63d5ff;
+}
+
+#menu p {
+    margin: 20px;
+    font-size: 18px;
+}
+
+#start {
+    padding: 18px 55px;
+    border: 2px solid white;
+    background: #174f37;
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+#start:hover {
+    background: #278451;
+}
+
+#hud {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    color: white;
+    font-size: 16px;
+    z-index: 5;
+    text-shadow: 2px 2px 5px black;
+    pointer-events: none;
+}
+
+#crosshair {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border: 2px solid white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    pointer-events: none;
+}
+
+#help {
+    position: fixed;
+    bottom: 15px;
+    left: 15px;
+    color: white;
+    z-index: 5;
+    text-shadow: 1px 1px 4px black;
+    font-size: 13px;
+    pointer-events: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="menu">
+    <h1>WILD WORLD</h1>
+    <p>OPEN WORLD SURVIVAL EXPERIENCE</p>
+    <p>Досліджуй світ. Знаходь будинки. Відкривай нові місця.</p>
+    <button id="start">ПОЧАТИ ГРУ</button>
+    <p>WASD — рух | SHIFT — біг | SPACE — стрибок</p>
+</div>
+
+<div id="hud">
+    <div>WILD WORLD 3D</div>
+    <div id="position">X: 0 | Z: 0</div>
+    <div id="speed">Швидкість: 0</div>
+</div>
+
+<div id="crosshair"></div>
+
+<div id="help">
+    WASD — рух | SHIFT — біг | SPACE — стрибок | ESC — меню
+</div>
+
+<script type="module">
+import * as THREE from
+'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+import { PointerLockControls } from
+'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/PointerLockControls.js';
+
+const scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0x87ceeb);
+scene.fog = new THREE.FogExp2(0x87ceeb, 0.0035);
+
+const camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1500
+);
+
+camera.position.set(0, 2, 10);
+
+const renderer = new THREE.WebGLRenderer({
+    antialias: true
+});
+
+renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+);
+
+renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, 2)
+);
+
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+document.body.appendChild(renderer.domElement);
+
+// CONTROLS
+
+const controls = new PointerLockControls(
+    camera,
+    document.body
+);
+
+document.getElementById("start").addEventListener(
+    "click",
+    () => controls.lock()
+);
+
+controls.addEventListener("lock", () => {
+    document.getElementById("menu").style.display = "none";
+});
+
+controls.addEventListener("unlock", () => {
+    document.getElementById("menu").style.display = "flex";
+});
+
+// LIGHTING
+
+const ambient = new THREE.HemisphereLight(
+    0xb9dcff,
+    0x35452b,
+    1.4
+);
+
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(
+    0xffedc2,
+    3
+);
+
+sun.position.set(100, 150, 70);
+sun.castShadow = true;
+
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+
+sun.shadow.camera.left = -100;
+sun.shadow.camera.right = 100;
+sun.shadow.camera.top = 100;
+sun.shadow.camera.bottom = -100;
+
+scene.add(sun);
+
+// SKY
+
+const skyGeometry = new THREE.SphereGeometry(
+    1000, 32, 32
+);
+
+const skyMaterial = new THREE.MeshBasicMaterial({
+    color: 0x78b9e8,
+    side: THREE.BackSide
+});
+
+const sky = new THREE.Mesh(
+    skyGeometry,
+    skyMaterial
+);
+
+scene.add(sky);
+
+// GROUND
+
+const groundGeometry = new THREE.PlaneGeometry(
+    1000, 1000, 100, 100
+);
+
+groundGeometry.rotateX(-Math.PI / 2);
+
+const groundMaterial = new THREE.MeshStandardMaterial({
+    color: 0x365c29,
+    roughness: 1
+});
+
+const ground = new THREE.Mesh(
+    groundGeometry,
+    groundMaterial
+);
+
+ground.receiveShadow = true;
+scene.add(ground);
+
+// RANDOM
+
+function random(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+// MOUNTAINS
+
+function createMountain(x, z, size) {
+
+    const geometry = new THREE.ConeGeometry(
+        size,
+        size * 2.5,
+        7
+    );
+
+    const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().setHSL(
+            random(0.25, 0.32),
+            0.15,
+            random(0.25, 0.4)
+        ),
+        roughness: 1
+    });
+
+    const mountain = new THREE.Mesh(
+        geometry,
+        material
+    );
+
+    mountain.position.set(
+        x,
+        size * 1.1,
+        z
+    );
+
+    mountain.rotation.y = random(0, 6);
+
+    mountain.castShadow = true;
+    mountain.receiveShadow = true;
+
+    scene.add(mountain);
+}
+
+for (let i = 0; i < 100; i++) {
+
+    createMountain(
+        random(-450, 450),
+        random(-450, 450),
+        random(15, 55)
+    );
+}
+
+// TREES
+
+function createTree(x, z) {
+
+    const trunkGeometry = new THREE.CylinderGeometry(
+        0.25, 0.4, 5, 8
+    );
+
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+        color: 0x50301b,
+        roughness: 1
+    });
+
+    const trunk = new THREE.Mesh(
+        trunkGeometry,
+        trunkMaterial
+    );
+
+    trunk.position.set(x, 2.5, z);
+    trunk.castShadow = true;
+
+    scene.add(trunk);
+
+    const leavesGeometry = new THREE.ConeGeometry(
+        random(2.5, 4),
+        random(6, 9),
+        8
+    );
+
+    const leavesMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().setHSL(
+            random(0.25, 0.34),
+            0.65,
+            random(0.16, 0.25)
+        ),
+        roughness: 1
+    });
+
+    const leaves = new THREE.Mesh(
+        leavesGeometry,
+        leavesMaterial
+    );
+
+    leaves.position.set(x, 7, z);
+    leaves.castShadow = true;
+
+    scene.add(leaves);
+}
+
+// FOREST GENERATION
+
+for (let i = 0; i < 450; i++) {
+
+    const x = random(-250, 250);
+    const z = random(-250, 250);
+
+    if (Math.sqrt(x*x + z*z) > 15) {
+        createTree(x, z);
+    }
+}
+
+// ROCKS
+
+function createRock(x, z) {
+
+    const geometry = new THREE.DodecahedronGeometry(
+        random(0.8, 2.5), 0
+    );
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x777b75,
+        roughness: 1
+    });
+
+    const rock = new THREE.Mesh(
+        geometry,
+        material
+    );
+
+    rock.position.set(x, 0.7, z);
+
+    rock.rotation.set(
+        random(0, 3),
+        random(0, 3),
+        random(0, 3)
+    );
+
+    rock.scale.y = random(0.5, 1.2);
+
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+
+    scene.add(rock);
+}
+
+for (let i = 0; i < 120; i++) {
+    createRock(
+        random(-200, 200),
+        random(-200, 200)
+    );
+}
+
+// HOUSES
+
+function createHouse(x, z) {
+
+    const house = new THREE.Group();
+
+    const walls = new THREE.Mesh(
+        new THREE.BoxGeometry(9, 5, 8),
+        new THREE.MeshStandardMaterial({
+            color: 0xb7a080,
+            roughness: 1
+        })
+    );
+
+    walls.position.y = 2.5;
+    walls.castShadow = true;
+    walls.receiveShadow = true;
+
+    house.add(walls);
+
+    const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(7, 4, 4),
+        new THREE.MeshStandardMaterial({
+            color: 0x59352b,
+            roughness: 1
+        })
+    );
+
+    roof.position.y = 7;
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true;
+
+    house.add(roof);
+
+    const door = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 3, 0.2),
+        new THREE.MeshStandardMaterial({
+            color: 0x392319
+        })
+    );
+
+    door.position.set(0, 1.5, 4.1);
+
+    house.add(door);
+
+    const windowMaterial = new THREE.MeshStandardMaterial({
+        color: 0x78c9e8,
+        metalness: 0.2,
+        roughness: 0.2
+    });
+
+    for (const side of [-1, 1]) {
+
+        const windowMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(1.5, 1.5, 0.2),
+            windowMaterial
+        );
+
+        windowMesh.position.set(
+            side * 2.5,
+            3,
+            4.1
+        );
+
+        house.add(windowMesh);
+    }
+
+    house.position.set(x, 0, z);
+
+    scene.add(house);
+}
+
+createHouse(30, -25);
+createHouse(-45, -60);
+createHouse(90, 50);
+createHouse(-100, 100);
+
+// ROAD
+
+const road = new THREE.Mesh(
+    new THREE.PlaneGeometry(12, 400),
+    new THREE.MeshStandardMaterial({
+        color: 0x55534a,
+        roughness: 1
+    })
+);
+
+road.rotation.x = -Math.PI / 2;
+road.position.set(0, 0.025, -100);
+
+scene.add(road);
+
+// CLOUDS
+
+function createCloud(x, y, z) {
+
+    const cloud = new THREE.Group();
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 1
+    });
+
+    for (let i = 0; i < 7; i++) {
+
+        const puff = new THREE.Mesh(
+            new THREE.SphereGeometry(
+                random(2, 5), 8, 8
+            ),
+            material
+        );
+
+        puff.position.set(
+            random(-5, 5),
+            random(-1, 2),
+            random(-3, 3)
+        );
+
+        cloud.add(puff);
+    }
+
+    cloud.position.set(x, y, z);
+    scene.add(cloud);
+
+    return cloud;
+}
+
+const clouds = [];
+
+for (let i = 0; i < 35; i++) {
+    clouds.push(
+        createCloud(
+            random(-400, 400),
+            random(60, 100),
+            random(-400, 400)
+        )
+    );
+}
+
+// PLAYER
+
+const keys = {};
+
+window.addEventListener("keydown", (event) => {
+    keys[event.code] = true;
+});
+
+window.addEventListener("keyup", (event) => {
+    keys[event.code] = false;
+});
+
+let velocityY = 0;
+let canJump = true;
+
+const clock = new THREE.Clock();
+
+function updatePlayer(delta) {
+
+    if (!controls.isLocked) return;
+
+    const speed = keys["ShiftLeft"] ? 15 : 7;
+
+    let moving = false;
+
+    if (keys["KeyW"]) {
+        controls.moveForward(speed * delta);
+        moving = true;
+    }
+
+    if (keys["KeyS"]) {
+        controls.moveForward(-speed * delta);
+        moving = true;
+    }
+
+    if (keys["KeyA"]) {
+        controls.moveRight(-speed * delta);
+        moving = true;
+    }
+
+    if (keys["KeyD"]) {
+        controls.moveRight(speed * delta);
+        moving = true;
+    }
+
+    if (keys["Space"] && canJump) {
+        velocityY = 8;
+        canJump = false;
+    }
+
+    velocityY -= 20 * delta;
+
+    camera.position.y += velocityY * delta;
+
+    if (camera.position.y < 2) {
+        camera.position.y = 2;
+        velocityY = 0;
+        canJump = true;
+    }
+
+    document.getElementById("speed").textContent =
+        "Швидкість: " + (moving ? speed : 0);
+
+    document.getElementById("position").textContent =
+        "X: " + camera.position.x.toFixed(1) +
+        " | Z: " + camera.position.z.toFixed(1);
+}
+
+// DAY AND NIGHT
+
+let dayTime = 0;
+
+function updateDayNight(delta) {
+
+    dayTime += delta * 0.015;
+
+    const sunHeight = Math.sin(dayTime);
+
+    sun.position.set(
+        Math.cos(dayTime) * 150,
+        sunHeight * 150 + 30,
+        80
+    );
+
+    sun.intensity = Math.max(
+        0.15,
+        1.5 * Math.max(0, sunHeight)
+    );
+
+    const night = Math.max(
+        0,
+        -sunHeight
+    );
+
+    ambient.intensity = 0.25 + (1 - night) * 1.0;
+}
+
+// ANIMATION
+
+function animate() {
+
+    requestAnimationFrame(animate);
+
+    const delta = Math.min(
+        clock.getDelta(),
+        0.05
+    );
+
+    updatePlayer(delta);
+    updateDayNight(delta);
+
+    clouds.forEach((cloud) => {
+        cloud.position.x += delta * 1.2;
+
+        if (cloud.position.x > 450) {
+            cloud.position.x = -450;
+        }
+    });
+
+    renderer.render(scene, camera);
+}
+
+animate();
+
+// RESIZE
+
+window.addEventListener("resize", () => {
+
+    camera.aspect =
+        window.innerWidth / window.innerHeight;
+
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+});
+
+</script>
+</body>
+</html>
